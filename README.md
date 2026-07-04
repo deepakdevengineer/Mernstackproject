@@ -214,6 +214,44 @@ Argo CD will automatically discover the `infra/` manifests in the repository, cr
 * `POST /api/tasks` - Create a new string processing task
   * Headers: `Authorization: Bearer <JWT_TOKEN>`
   * Request Body: `{ "title": "Review Job", "inputText": "sample string", "operationType": "uppercase" }`
-  * Valid operations: `uppercase`, `lowercase`, `reverse`, `word_count`
+  * Valid operations: `uppercase`, `lowercase`, `reverse`, `word_count`, `gemini_ai`
 * `GET /api/tasks` - Retrieve tasks created by current user
 * `GET /api/tasks/:id` - Get specific task details, status, result, and console logs.
+
+---
+
+## 6. Development Log & Architectural Evolution
+
+During development, we updated and optimized several core components to support local testing and free cloud hosting. Below is a detailed summary of what was updated, why, and the architectural insights gained.
+
+### 1. Google Gemini Generative AI Integration
+* **What was updated**: Added the `gemini_ai` operation.
+  * Installed the `google-generativeai` package in the Python worker (`worker/main.py`) and integrated model queries to the `gemini-1.5-flash` endpoint using the `GEMINI_API_KEY`.
+  * Added REST-based API query handlers in the backend (`backend/routes/tasks.js`) using Node's native `fetch` module.
+* **What we understood**: Real-world AI platforms require robust model integrations. Upgrading mock string processing tasks (Uppercase, Word Count) with live Gemini model generations transforms this project into a real AI platform.
+
+### 2. Resilient In-Memory Simulation Fallbacks
+* **What was updated**: Implemented a global fallback system in the Node.js Express server (`backend/server.js`).
+  * If local MongoDB or Redis connections fail, the backend bypasses `process.exit(1)` and activates `global.useMockDB` and `global.useMockQueue`.
+  * The routes dynamically execute task workflows in memory, mimicking states (`pending` -> `running` -> `success`) and outputting realistic Python worker terminal logs to the dashboard.
+* **What we understood**: Developer review environments are highly variable. Providing zero-setup local simulations ensures the project runs out-of-the-box, without sacrificing the production-ready cluster code.
+
+### 3. Serverless Upstash Redis & Atlas Integrations
+* **What was updated**: Migrated the local database URLs to cloud services.
+  * Configured `REDIS_URL` to support SSL (`rediss://`) for Upstash Serverless Redis.
+  * Configured `MONGO_URI` to connect with MongoDB Atlas Cluster0 (`mongodb+srv://`).
+* **What we understood**: Setting up Redis on local Windows hosts is complex without Docker. Serverless endpoints allow lightweight, low-overhead database connections for local development.
+
+### 4. SSL Handshake and Network Access Diagnostics
+* **What was updated**: Added detailed connection error outputs to mongoose catch blocks in `backend/server.js`.
+  * Resolved the `TLSV1_ALERT_INTERNAL_ERROR` handshake crash on Render by whitelisting `0.0.0.0/0` in the Atlas Network Access panel.
+* **What we understood**: MongoDB Atlas drops connections during TLS handshakes when blocked by firewalls. Enabling global whitelisting is required for dynamic cloud environments like Render.
+
+### 5. Multi-Threaded HTTP Health Servers for Render Compatibility
+* **What was updated**: Added a daemon HTTP health server thread inside the Python background worker (`worker/main.py`) listening on `PORT` (default `8000`).
+* **What we understood**: Render limits background workers on their free tier. Masquerading the daemon worker as a Web Service that responds to HTTP health check requests allows it to be hosted on Render for 100% free.
+
+### 6. Dynamic VITE_API_URL Loading
+* **What was updated**: Configured React's `API_BASE` in `frontend/src/App.jsx` to dynamically load `import.meta.env.VITE_API_URL`.
+* **What we understood**: Hardcoding `/api` works locally under dev proxies, but fails in multi-cloud hosting (Vercel + Render) unless the client can direct queries to the remote origin.
+
