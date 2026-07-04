@@ -54,7 +54,7 @@ def connect_mongodb(uri):
         logger.error(f"Failed to connect to MongoDB: {e}")
         sys.exit(1)
 
-def connect_redis(url):
+def connect_redis(url, exit_on_fail=True):
     logger.info("Connecting to Redis...")
     try:
         r = redis.Redis.from_url(url, decode_responses=True, socket_connect_timeout=5)
@@ -63,7 +63,9 @@ def connect_redis(url):
         return r
     except Exception as e:
         logger.error(f"Failed to connect to Redis: {e}")
-        sys.exit(1)
+        if exit_on_fail:
+            sys.exit(1)
+        raise e
 
 def run_operation(operation, input_text, logs):
     """
@@ -231,7 +233,7 @@ def main():
             logger.error("Redis connection lost. Attempting to reconnect...")
             time.sleep(5)
             try:
-                r = connect_redis(REDIS_URL)
+                r = connect_redis(REDIS_URL, exit_on_fail=False)
             except Exception:
                 pass
         except Exception as e:

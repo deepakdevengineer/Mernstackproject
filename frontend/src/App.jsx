@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-// Use relative URL (proxied to localhost:5000 in dev, routed by Ingress in k8s)
-const API_BASE = '/api';
+// Check environment variable VITE_API_URL if configured, otherwise fallback to relative /api path
+const apiOrigin = import.meta.env.VITE_API_URL || '';
+const API_BASE = apiOrigin ? `${apiOrigin.endsWith('/') ? apiOrigin.slice(0, -1) : apiOrigin}/api` : '/api';
 
 export default function App() {
   // Auth state
