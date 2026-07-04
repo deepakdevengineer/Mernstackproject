@@ -398,6 +398,7 @@ export default function App() {
                     <option value="lowercase">Convert to Lowercase</option>
                     <option value="reverse">Reverse String</option>
                     <option value="word_count">Compute Word Count</option>
+                    <option value="gemini_ai">✨ Ask Google Gemini AI</option>
                   </select>
                 </div>
 

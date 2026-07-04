@@ -6,6 +6,7 @@ import logging
 from bson.objectid import ObjectId
 from pymongo import MongoClient
 import redis
+import google.generativeai as genai
 from dotenv import load_dotenv
 
 # Load Environment Variables
@@ -84,6 +85,18 @@ def run_operation(operation, input_text, logs):
         count = len(words)
         result = str(count)
         logs.append(f"[Worker] Word count completed. Total: {count} words.")
+    elif operation == 'gemini_ai':
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            raise ValueError("GEMINI_API_KEY environment variable is not set.")
+        logs.append("[Worker] Configuring Google Gemini API Client...")
+        genai.configure(api_key=api_key)
+        logs.append("[Worker] Initializing model gemini-1.5-flash...")
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        logs.append("[Worker] Generating content with AI studio key...")
+        response = model.generate_content(input_text)
+        result = response.text
+        logs.append("[Worker] Gemini response generated successfully.")
     else:
         raise ValueError(f"Unknown operation: {operation}")
         
