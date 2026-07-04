@@ -50,7 +50,8 @@ global.useMockQueue = false;
 mongoose.connect(MONGO_URI)
   .then(() => console.log('MongoDB Connected successfully'))
   .catch(err => {
-    console.warn('MongoDB connection failed. Enabling In-Memory Mock Database mode for local demonstration.');
+    console.warn('MongoDB connection failed. Error details:', err.message);
+    console.warn('Enabling In-Memory Mock Database mode for local demonstration.');
     global.useMockDB = true;
   });
 
