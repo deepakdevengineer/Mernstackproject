@@ -8,6 +8,8 @@ from pymongo import MongoClient
 import redis
 import google.generativeai as genai
 from dotenv import load_dotenv
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 # Load Environment Variables
 load_dotenv()
@@ -178,8 +180,28 @@ def process_task(task_id, db):
             }
         )
 
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain")
+        self.end_headers()
+        self.wfile.write(b"healthy")
+
+    # Disable standard logging to stdout to keep worker logs clean
+    def log_message(self, format, *args):
+        return
+
+def start_health_server():
+    port = int(os.getenv("PORT", "8000"))
+    server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
+    logger.info(f"Starting health check web server on port {port}...")
+    server.serve_forever()
+
 def main():
     logger.info("Starting AI Task Processing Python Worker...")
+    
+    # Start background health server for Render Free Web Service compatibility
+    threading.Thread(target=start_health_server, daemon=True).start()
     
     # Establish connections
     mongo_client, db = connect_mongodb(MONGO_URI)
