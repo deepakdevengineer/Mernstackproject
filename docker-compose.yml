@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # MongoDB Database Service
+  # ==========================================
+  mongodb:
+    image: mongo:6.0
+    container_name: ai-platform-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - app-network
+
+  # ==========================================
+  # Redis Queue Service
+  # ==========================================
+  redis:
+    image: redis:7.0-alpine
+    container_name: ai-platform-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+
+  # ==========================================
+  # Node.js API Service (Backend)
+  # ==========================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ai-platform-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - MONGO_URI=mongodb://mongodb:27017/ai_tasks
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=super_secret_jwt_sign_key_987654321
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - app-network
+
+  # ==========================================
+  # Python Worker Service (Background processing)
+  # ==========================================
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    container_name: ai-platform-worker
+    restart: unless-stopped
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/ai_tasks
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - app-network
+
+  # ==========================================
+  # React + Nginx Web Service (Frontend)
+  # ==========================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ai-platform-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:8080"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+# Networks definition
+networks:
+  app-network:
+    driver: bridge
+
+# Persistent Volumes
+volumes:
+  mongo_data:
+    driver: local
+  redis_data:
+    driver: local
